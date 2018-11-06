@@ -31,7 +31,7 @@ class SimpleGridWorld(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['ansi']}
 
-    def __init__(self, world_array=DEFAULT_WORLD, isd=DEFAULT_ISD, action_error = 0.1):
+    def __init__(self, world_array=DEFAULT_WORLD, isd=DEFAULT_ISD, action_error = 0.0):
         assert type(world_array) is np.ndarray
         assert type(isd) is np.ndarray
         self.nrow, self.ncol = world_array.shape
@@ -39,25 +39,28 @@ class SimpleGridWorld(discrete.DiscreteEnv):
         self.nS = world_array.size
         self.nA = 4
         self.isd = isd
+        self.action_error = action_error
         self.P = {s: {a: [] for a in range(self.nA)} for s in range(self.nS)}
 
-        for i, row in enumerate(world_array):
-            for j, el in enumerate(row):
-                state = self._to_state(i,j)
-
-                for action in range(4):
-                    transitions = self.P[state][action]
-
-                    for direction in range(4):
-                        new_i, new_j = self._move(i,j,direction)
-                        new_state = self._to_state(new_i, new_j)
-                        state_val = world_array[new_i, new_j]
-                        reward = int(state_val) if state_val != 'd' else 1
-                        done = state_val == "d"
-                        transition_prob = 1-action_error if action==direction else action_error / 3
-                        transitions.append((transition_prob,  new_state, reward, done))
+        self._init_transitions()
 
         super(SimpleGridWorld, self).__init__(self.nS, self.nA, self.P, self.isd)
+
+    def _init_transitions(self):
+        for (i, j), el in np.ndenumerate(self.world_array):
+            state = self._to_state(i,j)
+
+            for action in range(4):
+                transitions = self.P[state][action]
+
+                for direction in range(4):
+                    new_i, new_j = self._move(i,j,direction)
+                    new_state = self._to_state(new_i, new_j)
+                    state_val = self.world_array[new_i, new_j]
+                    reward = int(state_val) if state_val != 'd' else 1
+                    done = state_val == "d"
+                    transition_prob = 1-self.action_error if action==direction else self.action_error / 3
+                    transitions.append((transition_prob,  new_state, reward, done))
 
     def _to_state(self, row, col):
         return row*self.ncol + col
