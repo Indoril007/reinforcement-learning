@@ -2,6 +2,7 @@ import gym
 import envs
 import numpy as np
 from agents.dynamic_methods import policy_evaluation, policy_improvement, policy_iteration, value_iteration
+from agents.monte_carlo import MonteCarlo
 
 env = gym.make('SimpleGridWorld-v0')
 # env = gym.make('FrozenLake-v0').env
@@ -19,13 +20,28 @@ optimal_policy = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0,
 #     env.step(env.action_space.sample())
 
 
-#values = policy_evaluation(transitions, [[0.25 for _ in range(4)] for _ in range(36)], max_iterations = 100, end_states = [5], discount_factor=0.9)
+print("="*100)
+values = policy_evaluation(transitions, [[0.25 for _ in range(4)] for _ in range(36)], max_iterations = 1000, end_states = [5])
+print("="*100)
 #values = policy_evaluation(transitions, optimal_policy, max_iterations = 100, end_states = [5], discount_factor=0.99)
 
+# print("="*100)
 # policy = policy_iteration(transitions, end_states = [15])
-# print(policy)
+# # print(policy)
+# print("="*100)
 
-values = value_iteration(transitions, [5])
+# values = value_iteration(transitions, [5])
+MC = MonteCarlo(env, policy = [[0.25 for _ in range(4)] for _ in range(36)])
+# MC = MonteCarlo(env, policy = policy)
+# mc_values = MC._prediction(max_steps=1000, max_episodes=3)
+# print("="*100)
+# mc_values = MC._prediction(type='every', max_steps=2000, max_episodes=1000)
+# print("="*100)
+# mc_values = MC._prediction(max_steps=2000, max_episodes=1000)
+# print("="*100)
+# mc_values = MC._q_prediction()
+policy = MC.policy_iteration()
+
 
 # def _display_policy(policy):
 #     col = 0

@@ -1,6 +1,6 @@
 import numpy as np
 
-def policy_evaluation(state_transitions, policy, end_states = None, discount_factor = 0.99, stop_threshold=0.001, max_iterations=None):
+def policy_evaluation(state_transitions, policy, end_states = None, discount_factor = 0.99, stop_threshold=0.00001, max_iterations=None):
     num_states = len(state_transitions)
     values = np.zeros(num_states)
     iterations = 0
@@ -19,6 +19,7 @@ def policy_evaluation(state_transitions, policy, end_states = None, discount_fac
         if (max_iterations is not None and iterations >= max_iterations) or (max_diff < stop_threshold):
             break
 
+    _display_values(values)
     return values
 
 def _get_state_value(action_probs, action_transitions, values, discount_factor):
@@ -118,8 +119,8 @@ def value_iteration(state_transitions, end_states, stop_threshold = 0.01, max_it
     return values
 
 def _display_policy(policy):
-    actions = ['<', 'v', '>', '^']
-    ncol = 4
+    actions = ['^', 'v', '<', '>']
+    ncol = 6
     col = 0
     for act_probs in policy:
         i = np.argmax(act_probs)
