@@ -1,32 +1,45 @@
 from gym.spaces import discrete
-
-class GridAgent(object):
-    pass
-
-class GridPolicy(object):
-    pass
-
-class GridValues(object):
-    pass
+import numpy as np
 
 class Agent(object):
-    def __init__(self, env):
-        self.env = env
-        self.solver = None
+    def __init__(self, state_space, action_space, discount_factor):
+        self.state_space = state_space
+        self.action_space = action_space
+        self.discount_factor = discount_factor
 
-        if isinstance(env.observation_space, discrete.Discrete) and \
-            isinstance(env.action_space, discrete.Discrete):
-            self.values = TabularValues(env.observation_space, env.action_space)
-            self.policy = TabularPolicy(env.observation_space, env.action_space)
-        else:
-            self.policy = None
-            self.values = None
+        self.values = None
+        self.policy = None
 
-class TabularAgent(object):
-    pass
+    def display_values(self):
+        self.values.display()
 
+    def display_policy(self):
+        self.policy.display()
+
+
+class TabularAgent(Agent):
+
+    def __init__(self, state_space, action_space, discount_factor):
+        super(TabularAgent, self).__init__(state_space, action_space, discount_factor)
+
+class GridAgent(TabularAgent):
+
+    def __init__(self, state_space, action_space, shape, discount_factor):
+        super(GridAgent, self).__init__(state_space, action_space, discount_factor)
+
+        self.policy = GridPolicy(state_space, action_space, shape)
+        self.values = GridValues(state_space, action_space, shape)
+
+        self.get_value = self.values.get_value
+        self.get_q_value = self.values.get_q_value
+        self.set_value = self.values.set_value
+        self.set_q_value = self.values.set_q_value
 
 class Values(object):
+
+    def __init__(self, state_space, action_space):
+        self.state_space = state_space
+        self.action_space = action_space
 
     def get_value(self, state):
         raise NotImplementedError
@@ -34,32 +47,96 @@ class Values(object):
     def get_q_value(self, state, action):
         raise NotImplementedError
 
-    def update_values(self, *args):
-        raise NotImplementedError
+    def set_value(self, state, value):
+        raise NotImplementedError("set value has not been defined for these values. Likely because they are not tabular")
 
-    def update_q_values(self, *args):
+    def set_q_value(self, state, action_value):
+        raise NotImplementedError("set q_value has not been defined for these values. Likely because they are not tabular")
+
+    def display(self):
         raise NotImplementedError
 
 class TabularValues(Values):
 
-    def __init__(self, num_states, num_actions, states = None, actions = None):
-        self.values = [0]*num_states
-        self.q_values = [[0] * num_actions for _ in range(num_states)]
+    def __init__(self, state_space, action_space):
+        if not isinstance(state_space, discrete.Discrete):
+            raise TypeError("For tabular values the state space must be discrete")
+        if not isinstance(action_space, discrete.Discrete):
+            raise TypeError("For tabular values the action space must be discrete")
+
+        super(TabularValues, self).__init__(state_space, action_space)
+
+        self.num_states = state_space.n
+        self.num_actions = action_space.n
+        self.values = [0 for _ in range(self.num_states)]
+        self.q_values = [[0 for _ in range(self.num_actions)] for _ in range(self.num_states)]
 
     def get_value(self, state):
         return self.values[state]
 
     def get_q_value(self, state, action):
-        return self.values[state][action]
+        return self.q_values[state][action]
 
-    def update_values(self, state, value):
-        self.values[state] = values
+    def set_value(self, state, value):
+        self.values[state] = value
 
-    def update_q_values(self, state, action, value):
-        self.values[state][action] = value
+    def set_q_value(self, state, action, value):
+        self.q_values[state][action] = value
 
-class ValueFunction(Values):
-    pass
+    def __getitem__(self, key):
+        return self.values[key]
+
+    def __setitem__(self, key, value):
+        self.values[key] = value
+
+    def __iter__(self):
+        return self.values.__iter__()
+
+class GridValues(TabularValues):
+
+    def __init__(self, state_space, action_space, shape):
+
+        super(GridValues, self).__init__(state_space, action_space)
+
+        if not self.num_states == (shape[0] * shape[1]):
+            raise ValueError("The num of columns and rows given in shape does not match up with the number of states in"
+                             "the environment")
+
+        self.shape = shape
+        self.nRows = shape[0]
+        self.nCols = shape[1]
+
+    def _convert_to_state(self, pos):
+        row, col = pos
+        return row * self.nRows + col
+
+    def get_value(self, state):
+        if type(state) is int:
+            return super(GridValues, self).get_value(state)
+        elif type(state) is tuple:
+            return super(GridValues, self).get_value(self._convert_to_state(state))
+
+    def get_q_value(self, state, action):
+        if type(state) is int:
+            return super(GridValues, self).get_q_value(state, action)
+        elif type(state) is tuple:
+            return super(GridValues, self).get_q_value(self._convert_to_state(state), action)
+
+    def set_value(self, state, value):
+        if type(state) is int:
+            super(GridValues, self).set_value(state, value)
+        elif type(state) is tuple:
+            super(GridValues, self).set_value(self._convert_to_state(state), value)
+
+    def set_q_value(self, state, action, value):
+        if type(state) is int:
+            super(GridValues, self).set_q_value(state, action, value)
+        elif type(state) is tuple:
+            super(GridValues, self).set_q_value(self._convert_to_state(state), action, value)
+
+    def display(self):
+        for r in range(0, self.num_states, self.nCols):
+            print(" ".join(map(lambda x: "{:.4f}".format(x), self.values[r:r+self.nCols])))
 
 class Policy:
 
@@ -68,15 +145,18 @@ class Policy:
         self.action_space = action_space
 
     def sample_action(self, state):
-
         raise NotImplementedError
 
-    def action_probs(self, state):
-
+    def get_action_probs(self, state):
         raise NotImplementedError
 
-    def optimal_action(self, state):
+    def get_optimal_action(self, state):
+        raise NotImplementedError
 
+    def set_optimal_action(self, state, action):
+        raise NotImplementedError
+
+    def display(self):
         raise NotImplementedError
 
 class TabularPolicy(Policy):
@@ -93,29 +173,49 @@ class TabularPolicy(Policy):
 
         super(TabularPolicy, self).__init__(state_space, action_space)
 
+        self.num_states = state_space.n
+        self.num_actions = action_space.n
         self.state_names = state_names
         self.action_names = action_names
         self.states2index = None if state_names is None else dict(zip(state_names, range(len(state_names))))
         self.actions2index = None if action_names is None else dict(zip(action_names, range(len(action_names))))
-        policy = [ [(1/action_space.n) for _ in range(action_space.n)] for _ in range(state_space.n) ]
+        self.policy = [ [(1/action_space.n) for _ in range(action_space.n)] for _ in range(state_space.n) ]
 
     def sample_action(self, state):
-        return np.random.choice(range(len(policy[state])) , p=policy[state])
+        return np.random.choice(range(len(self.policy[state])) , p=self.policy[state])
 
     def sample_action_by_name(self, state):
-        return np.random.choice(self.action_names, p=policy[self.states2index[state]])
+        return np.random.choice(self.action_names, p=self.policy[self.states2index[state]])
 
-    def action_probs(self, state):
-        return policy[state]
+    def get_action_probs(self, state):
+        return self.policy[state]
 
-    def action_probs_by_name(self, state):
-        return policy[self.states2index[state]]
+    def get_action_probs_by_name(self, state):
+        return {a : self.policy[self.states2index[state]][self.actions2index[a]] for a in self.action_names}
 
-    def optimal_action(self, state):
+    def get_optimal_action(self, state):
         return np.argmax(self.action_probs(state))
 
-    def optimal_action_by_name(self, state):
+    def get_optimal_action_by_name(self, state):
         return state_names[ np.argmax(self.action_probs_by_name(state)) ]
+
+    def set_optimal_action(self, state, optimal_action):
+        if self.policy[state][optimal_action] == 1:
+            return False
+
+        for a in range(self.num_actions):
+            self.policy[state][a] = 0
+        self.policy[state][optimal_action] = 1
+        return True
+
+    def set_optimal_action_by_name(self, state, optimal_action):
+        if self.policy[self.states2index[state]][self.actions2index[optimal_action]] == 1:
+            return False
+
+        for a in range(self.num_actions):
+            self.policy[self.states2index[state]][a] = 0
+        self.policy[self.states2index[state]][self.actions2index[optimal_action]] = 1
+        return True
 
 class GridPolicy(TabularPolicy):
 
@@ -129,16 +229,14 @@ class GridPolicy(TabularPolicy):
 
         super(GridPolicy, self).__init__(state_space, action_space, self.state_names, self.action_names)
 
-    def display_policy(self):
+    def display(self):
         action_symbols = ['^', 'v', '<', '>']
 
         for state in self.state_names:
             i, j = state
-            best_action = np.argmax(self.action_probs_by_name(state))
-            if j == 0:
+            best_action = np.argmax(self.get_action_probs(self.states2index[state]))
+            if (not i == 0) and (j == 0):
                 print()
             print(action_symbols[best_action], end = "")
 
-
-class Solver:
-    pass
+        print()

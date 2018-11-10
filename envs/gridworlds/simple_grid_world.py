@@ -7,13 +7,15 @@ DOWN = 1
 LEFT = 2
 RIGHT = 3
 
+DEFAULT_END_STATES = [5]
+
 DEFAULT_WORLD = np.array([
     [0, 0, 0, 0, 0, 'd'],
     [0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0]
 ])
 
 DEFAULT_ISD = np.array([
@@ -34,7 +36,9 @@ class SimpleGridWorld(discrete.DiscreteEnv):
     def __init__(self, world_array=DEFAULT_WORLD, isd=DEFAULT_ISD, action_error = 0.0):
         assert type(world_array) is np.ndarray
         assert type(isd) is np.ndarray
+        self.end_states = DEFAULT_END_STATES
         self.nrow, self.ncol = world_array.shape
+        self.shape = world_array.shape
         self.world_array = world_array
         self.nS = world_array.size
         self.nA = 4
