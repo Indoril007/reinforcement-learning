@@ -1,6 +1,7 @@
 import gym
 import envs
 import numpy as np
+from agents.core import TabularPolicy
 from agents.dynamic_methods import policy_evaluation, policy_improvement, policy_iteration, value_iteration
 from agents.monte_carlo import MonteCarlo
 
@@ -19,9 +20,9 @@ optimal_policy = [[0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0, 0, 1], [0, 0,
 #     print(env.render())
 #     env.step(env.action_space.sample())
 
-
+policy = TabularPolicy(env.observation_space, env.action_space)
 print("="*100)
-values = policy_evaluation(transitions, [[0.25 for _ in range(4)] for _ in range(36)], max_iterations = 1000, end_states = [5])
+values = policy_evaluation(transitions, policy, max_iterations = 1000, end_states = [5])
 print("="*100)
 #values = policy_evaluation(transitions, optimal_policy, max_iterations = 100, end_states = [5], discount_factor=0.99)
 
@@ -31,7 +32,7 @@ print("="*100)
 # print("="*100)
 
 # values = value_iteration(transitions, [5])
-MC = MonteCarlo(env, policy = [[0.25 for _ in range(4)] for _ in range(36)])
+# MC = MonteCarlo(env, policy = [[0.25 for _ in range(4)] for _ in range(36)])
 # MC = MonteCarlo(env, policy = policy)
 # mc_values = MC._prediction(max_steps=1000, max_episodes=3)
 # print("="*100)
@@ -40,7 +41,7 @@ MC = MonteCarlo(env, policy = [[0.25 for _ in range(4)] for _ in range(36)])
 # mc_values = MC._prediction(max_steps=2000, max_episodes=1000)
 # print("="*100)
 # mc_values = MC._q_prediction()
-policy = MC.policy_iteration()
+# policy = MC.policy_iteration()
 
 
 # def _display_policy(policy):
