@@ -18,6 +18,18 @@ DEFAULT_WORLD = np.array([
     [0, 0, 0, 0, 0, 0]
 ])
 
+WORLD_1 = np.array([
+    [0, 0, 0, 0, 0, 'd'],
+    [0, 0, -3, 0, -1, -1],
+    [0, 0, -3, 0, 0, 0],
+    [0, 0, -3, -3, 0, 0],
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0]
+])
+
+RANDOM_START_ISD = np.full((6,6), (1/35))
+RANDOM_START_ISD[0,5] = 0
+
 DEFAULT_ISD = np.array([
     [0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0],
@@ -33,7 +45,7 @@ class SimpleGridWorld(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['ansi']}
 
-    def __init__(self, world_array=DEFAULT_WORLD, isd=DEFAULT_ISD, action_error = 0.0):
+    def __init__(self, world_array=WORLD_1, isd=DEFAULT_ISD, action_error = 0.0):
         assert type(world_array) is np.ndarray
         assert type(isd) is np.ndarray
         self.end_states = DEFAULT_END_STATES

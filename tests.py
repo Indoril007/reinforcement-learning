@@ -7,12 +7,23 @@ from agents.dynamic_methods import DynamicMethods
 from agents.monte_carlo import MonteCarlo
 
 env = gym.make('SimpleGridWorld-v0')
-agent = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.99)
-DM = DynamicMethods(env, agent)
-DM.value_iteration()
+agent1 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
+agent2 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
+DM = DynamicMethods(env, agent1)
+DM.policy_iteration()
+DM.q_evaluation()
 
-agent.display_values()
-agent.display_policy()
+true_q_values = agent1.values.get_all_q_values()
+
+# policy = agent1.policy.get_policy()
+# agent2.policy.set_policy(policy)
+
+MC = MonteCarlo(env, agent2)
+MC.off_policy_q_iteration(max_episodes=10000, true_values=np.array(true_q_values))
+
+#agent2.display_values()
+agent2.display_q_values()
+agent2.display_policy()
 # env = gym.make('FrozenLake-v0').env
 
 # transitions = env.P

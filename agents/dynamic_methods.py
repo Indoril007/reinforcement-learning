@@ -31,6 +31,13 @@ class DynamicMethods:
             if (max_iterations is not None and iterations >= max_iterations) or (max_diff < stop_threshold):
                 break
 
+    def q_evaluation(self):
+        for state in range(self.num_states):
+            if state in self.end_states:
+                continue
+            for action in range(self.num_actions):
+                self.agent.set_q_value(state, action, self._get_action_value(state, action))
+
     def _get_state_value(self, state):
         value = 0
         action_probs = self.policy.get_action_probs(state)
@@ -74,7 +81,7 @@ class DynamicMethods:
                     maxval = action_value
                     optimal_action = action
 
-            changed = changed or self.policy.set_optimal_action(state, optimal_action)
+            changed = changed or self.policy.greedy.set_action(state, optimal_action)
         return changed
 
     def policy_iteration(self, eval_iterations = 100):

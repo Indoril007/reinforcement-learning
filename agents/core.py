@@ -13,6 +13,9 @@ class Agent(object):
     def display_values(self):
         self.values.display()
 
+    def display_q_values(self):
+        self.values.display_q_values()
+
     def display_policy(self):
         self.policy.display()
 
@@ -32,6 +35,7 @@ class GridAgent(TabularAgent):
 
         self.get_value = self.values.get_value
         self.get_q_value = self.values.get_q_value
+        self.get_q_values = self.values.get_q_values
         self.set_value = self.values.set_value
         self.set_q_value = self.values.set_q_value
 
@@ -52,6 +56,9 @@ class Values(object):
 
     def set_q_value(self, state, action_value):
         raise NotImplementedError("set q_value has not been defined for these values. Likely because they are not tabular")
+
+    def get_all_q_values(self):
+        raise NotImplementedError
 
     def display(self):
         raise NotImplementedError
@@ -76,6 +83,12 @@ class TabularValues(Values):
 
     def get_q_value(self, state, action):
         return self.q_values[state][action]
+
+    def get_q_values(self, state):
+        return self.q_values[state]
+
+    def get_all_q_values(self):
+        return self.q_values
 
     def set_value(self, state, value):
         self.values[state] = value
@@ -115,34 +128,56 @@ class GridValues(TabularValues):
             return super(GridValues, self).get_value(state)
         elif type(state) is tuple:
             return super(GridValues, self).get_value(self._convert_to_state(state))
+        else:
+            raise TypeError("state should be an integer or tuple")
 
     def get_q_value(self, state, action):
         if type(state) is int:
             return super(GridValues, self).get_q_value(state, action)
         elif type(state) is tuple:
             return super(GridValues, self).get_q_value(self._convert_to_state(state), action)
+        else:
+            raise TypeError("state should be an integer or tuple")
 
     def set_value(self, state, value):
         if type(state) is int:
             super(GridValues, self).set_value(state, value)
         elif type(state) is tuple:
             super(GridValues, self).set_value(self._convert_to_state(state), value)
+        else:
+            raise TypeError("state should be an integer or tuple")
 
     def set_q_value(self, state, action, value):
         if type(state) is int:
             super(GridValues, self).set_q_value(state, action, value)
         elif type(state) is tuple:
             super(GridValues, self).set_q_value(self._convert_to_state(state), action, value)
+        else:
+            raise TypeError("state should be an integer or tuple")
 
     def display(self):
         for r in range(0, self.num_states, self.nCols):
             print(" ".join(map(lambda x: "{:.4f}".format(x), self.values[r:r+self.nCols])))
+
+    def display_q_values(self):
+        lines = ["|", "|", "|", "-"]
+        for state in range(self.num_states):
+            if state != 0 and state % self.nCols == 0:
+                print("\n".join(lines))
+                lines = ["|", "|", "|","-"]
+            lines[0] += "{:^18.2f}|".format(self.q_values[state][0])
+            lines[1] += " {:<8.2f}{:>8.2f} |".format(self.q_values[state][2], self.q_values[state][3])
+            lines[2] += "{:^18.2f}|".format(self.q_values[state][1])
+            lines[3] += "-"*19
+        print("\n".join(lines))
 
 class Policy:
 
     def __init__(self, state_space, action_space):
         self.state_space = state_space
         self.action_space = action_space
+        self.greedy = Greedy(self)
+        self.epsilon_greedy = EpsilonGreedy(self)
 
     def sample_action(self, state):
         raise NotImplementedError
@@ -150,72 +185,99 @@ class Policy:
     def get_action_probs(self, state):
         raise NotImplementedError
 
-    def get_optimal_action(self, state):
+    def get_action_prob(self, state, action):
         raise NotImplementedError
 
-    def set_optimal_action(self, state, action):
+    def get_policy(self):
+        raise NotImplementedError
+
+    def set_policy(self):
         raise NotImplementedError
 
     def display(self):
         raise NotImplementedError
 
+class Greedy(object):
+
+    def __init__(self, parent):
+        self.parent = parent
+
+    def sample_action(self, state):
+        return np.argmax(self.parent.get_action_probs(state))
+
+    def get_action_probs(self, state):
+        return [1 if i == self.sample_action(state) else 0 for i in range(self.parent.num_actions)]
+
+    def get_action_prob(self, state, action):
+        return 1 if action == self.sample_action(state) else 0
+
+    def set_action(self, state, action):
+        if self.parent.get_action_prob(state, action) == 1:
+            return False
+
+        for a in range(self.parent.num_actions):
+            self.parent.policy[state][a] = 1 if a == action else 0
+        return True
+
+class EpsilonGreedy(object):
+
+    def __init__(self, parent, epsilon=0.5):
+        self.parent = parent
+        self.epsilon = epsilon
+
+    def sample_action(self, state):
+        return np.random.choice(range(self.parent.num_actions), p=self.get_action_probs(state))
+
+    def get_action_probs(self, state):
+        optimal_action = np.argmax(self.parent.get_action_probs(state))
+        probs = [(1-self.epsilon) + (self.epsilon/self.parent.num_actions) if a == optimal_action else \
+                (self.epsilon/self.parent.num_actions) for a in range(self.parent.num_actions)]
+        return probs
+
+    def get_action_prob(self, state, action):
+        return self.get_action_probs(state)[action]
+
+    def set_action(self, state, action):
+        if np.isclose(1-self.epsilon + (self.epsilon / self.parent.num_actions),
+                      self.parent.get_action_prob(state, action)):
+            return False
+
+        for a in range(self.parent.num_actions):
+            if a == action:
+                self.parent.policy[state][a] = 1 - self.epsilon + (self.epsilon / self.parent.num_actions)
+            else:
+                self.parent.policy[state][a] = self.epsilon / self.parent.num_actions
+        return True
+
 class TabularPolicy(Policy):
 
-    def __init__(self, state_space, action_space, state_names = None, action_names = None):
+    def __init__(self, state_space, action_space):
         if not isinstance(state_space, discrete.Discrete):
             raise TypeError("the state space must be of type {}".format(discrete.Discrete))
         if not isinstance(action_space, discrete.Discrete):
             raise TypeError("the action space must be of type {}".format(discrete.Discrete))
-        if state_names is not None and len(state_names) != state_space.n:
-            raise ValueError("The length of state_names should be equal to the size of the state space")
-        if action_names is not None and len(action_names) != action_space.n:
-            raise ValueError("The length of action_names should be equal to the size of the action space")
 
         super(TabularPolicy, self).__init__(state_space, action_space)
 
         self.num_states = state_space.n
         self.num_actions = action_space.n
-        self.state_names = state_names
-        self.action_names = action_names
-        self.states2index = None if state_names is None else dict(zip(state_names, range(len(state_names))))
-        self.actions2index = None if action_names is None else dict(zip(action_names, range(len(action_names))))
         self.policy = [ [(1/action_space.n) for _ in range(action_space.n)] for _ in range(state_space.n) ]
 
     def sample_action(self, state):
         return np.random.choice(range(len(self.policy[state])) , p=self.policy[state])
 
-    def sample_action_by_name(self, state):
-        return np.random.choice(self.action_names, p=self.policy[self.states2index[state]])
-
     def get_action_probs(self, state):
         return self.policy[state]
 
-    def get_action_probs_by_name(self, state):
-        return {a : self.policy[self.states2index[state]][self.actions2index[a]] for a in self.action_names}
+    def get_action_prob(self, state, action):
+        return self.policy[state][action]
 
-    def get_optimal_action(self, state):
-        return np.argmax(self.action_probs(state))
+    def get_policy(self):
+        return self.policy
 
-    def get_optimal_action_by_name(self, state):
-        return state_names[ np.argmax(self.action_probs_by_name(state)) ]
+    def set_policy(self, policy):
+        self.policy = policy
 
-    def set_optimal_action(self, state, optimal_action):
-        if self.policy[state][optimal_action] == 1:
-            return False
-
-        for a in range(self.num_actions):
-            self.policy[state][a] = 0
-        self.policy[state][optimal_action] = 1
-        return True
-
-    def set_optimal_action_by_name(self, state, optimal_action):
-        if self.policy[self.states2index[state]][self.actions2index[optimal_action]] == 1:
-            return False
-
-        for a in range(self.num_actions):
-            self.policy[self.states2index[state]][a] = 0
-        self.policy[self.states2index[state]][self.actions2index[optimal_action]] = 1
-        return True
 
 class GridPolicy(TabularPolicy):
 
@@ -224,19 +286,14 @@ class GridPolicy(TabularPolicy):
             raise ValueError("nRows x nCols given by shape does not much the size of the state space")
 
         self.shape = shape
-        self.state_names = [(i,j) for i in range(shape[0]) for j in range(shape[1])]
-        self.action_names = ["UP", "DOWN", "LEFT", "RIGHT"]
 
-        super(GridPolicy, self).__init__(state_space, action_space, self.state_names, self.action_names)
+        super(GridPolicy, self).__init__(state_space, action_space)
 
     def display(self):
         action_symbols = ['^', 'v', '<', '>']
-
-        for state in self.state_names:
-            i, j = state
-            best_action = np.argmax(self.get_action_probs(self.states2index[state]))
-            if (not i == 0) and (j == 0):
+        for state in range(self.num_states):
+            if (not state == 0) and (state % self.shape[1] == 0):
                 print()
+            best_action = self.greedy.sample_action(state)
             print(action_symbols[best_action], end = "")
-
         print()
