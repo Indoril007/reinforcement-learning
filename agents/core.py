@@ -81,6 +81,9 @@ class TabularValues(Values):
     def get_value(self, state):
         return self.values[state]
 
+    def get_all_values(self):
+        return self.values
+
     def get_q_value(self, state, action):
         return self.q_values[state][action]
 
@@ -124,7 +127,7 @@ class GridValues(TabularValues):
         return row * self.nRows + col
 
     def get_value(self, state):
-        if type(state) is int:
+        if type(state) is int or isinstance(state, np.int64):
             return super(GridValues, self).get_value(state)
         elif type(state) is tuple:
             return super(GridValues, self).get_value(self._convert_to_state(state))

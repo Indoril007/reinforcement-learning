@@ -1,6 +1,4 @@
 import numpy as np
-import gym
-import copy
 from collections import defaultdict
 
 class MonteCarlo:
