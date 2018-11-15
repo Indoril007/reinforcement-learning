@@ -11,24 +11,28 @@ env = gym.make('SimpleGridWorld-v0')
 agent1 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
 agent2 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
 DM = DynamicMethods(env, agent1)
-DM.policy_evaluation()
+DM.policy_iteration()
+DM.q_evaluation()
 
 true_q_values = agent1.values.get_all_q_values()
 true_values = agent1.values.get_all_values()
-agent1.display_values()
+# agent1.display_values()
+# agent1.display_policy()
+# agent1.display_q_values()
 
 # policy = agent1.policy.get_policy()
 # agent2.policy.set_policy(policy)
 
-# MC = MonteCarlo(env, agent2)
-# MC.off_policy_q_iteration(max_episodes=10000, true_values=np.array(true_q_values))
+MC = MonteCarlo(env, agent2)
+MC.off_policy_q_iteration(max_episodes=10000, true_values=np.array(true_q_values))
+MC.policy_improvement()
 
-TD = TemporalDifference(env, agent2)
-TD.policy_evaluation(true_values = true_values, max_episodes=3000, log=False)
+# TD = TemporalDifference(env, agent2)
+# TD.policy_evaluation(true_values = true_values, max_episodes=3000, log=False)
 
 agent2.display_values()
-# agent2.display_q_values()
-# agent2.display_policy()
+agent2.display_q_values()
+agent2.display_policy()
 # env = gym.make('FrozenLake-v0').env
 
 # transitions = env.P

@@ -1,5 +1,7 @@
 import numpy as np
 from collections import defaultdict
+from .core import Greedy, EpsilonGreedy
+
 
 class MonteCarlo:
 
@@ -10,6 +12,8 @@ class MonteCarlo:
 
         self.agent = agent
         self.policy = agent.policy
+        self.greedy = Greedy(self.agent.values)
+        self.epsilon_greedy = EpsilonGreedy(self.agent.values)
         self.discount_factor = agent.discount_factor
 
     def value_prediction(self, style = 'first', max_steps = 1000, max_episodes=100):
@@ -86,6 +90,8 @@ class MonteCarlo:
                     self.agent.set_q_value(int(obs), action, new_value)
 
     def off_policy_q_prediction(self, max_steps = 1000, max_episodes=100, style='every'):
+        target = self.greedy
+        behaviour = self.epsilon_greedy
 
         cum_weights = defaultdict(lambda: defaultdict(int))
 
@@ -97,7 +103,7 @@ class MonteCarlo:
             episode = []
             visits = defaultdict(lambda: defaultdict(list))
             for t in range(max_steps):
-                action = self.policy.epsilon_greedy.sample_action(obs)
+                action = behaviour.sample_action(obs)
                 next_obs, reward, done, _ = self.env.step(action)
                 episode.append([obs, action, reward])
 
@@ -118,13 +124,15 @@ class MonteCarlo:
                 new_value = old_value + (weight/cum_weights[obs][action]) * (ret - old_value)
                 self.agent.set_q_value(int(obs), action, new_value)
 
-                importance_ratio = (self.policy.greedy.get_action_prob(obs, action) /
-                                     self.policy.epsilon_greedy.get_action_prob(obs, action))
+                importance_ratio = (target.get_action_prob(obs, action) /
+                                     behaviour.get_action_prob(obs, action))
                 weight = weight * importance_ratio
                 if weight == 0:
                     break
 
     def off_policy_q_iteration(self, max_steps = 5000, max_episodes=100, true_values=None):
+        target = self.greedy
+        behaviour = self.epsilon_greedy
 
         cum_weights = defaultdict(lambda: defaultdict(int))
 
@@ -139,7 +147,7 @@ class MonteCarlo:
             episode = []
             visits = defaultdict(lambda: defaultdict(list))
             for t in range(max_steps):
-                action = self.policy.epsilon_greedy.sample_action(obs)
+                action = behaviour.sample_action(obs)
                 next_obs, reward, done, _ = self.env.step(action)
                 episode.append([obs, action, reward])
                 visits[obs][action].append(t)
@@ -156,11 +164,9 @@ class MonteCarlo:
                 old_value = self.agent.get_q_value(int(obs), action)
                 new_value = old_value + (weight/cum_weights[obs][action]) * (ret - old_value)
                 self.agent.set_q_value(int(obs), action, new_value)
-
-                self.policy.greedy.set_action(obs, np.argmax(self.agent.get_q_values(obs)))
-                if action != self.policy.greedy.sample_action(obs):
+                if action != target.sample_action(obs):
                     break
-                importance_ratio = (1 / self.policy.epsilon_greedy.get_action_prob(obs, action))
+                importance_ratio = (1 / behaviour.get_action_prob(obs, action))
                 weight = weight * importance_ratio
 
     def policy_improvement(self, type = 'greedy'):
@@ -177,9 +183,9 @@ class MonteCarlo:
                     maxval = val
 
             if type == 'greedy':
-                self.policy.greedy.set_action(state, optimal_action)
+                self.policy.set_optimal_action(state, optimal_action)
             elif type == 'epsilon_greedy':
-                self.policy.epsilon_greedy.set_action(state, optimal_action)
+                self.policy.set_optimal_action(state, optimal_action, epsilon = 0.1)
 
     def policy_iteration(self, style = 'first', max_steps = 1000, max_episodes=10, type='greedy'):
         for _ in range(10):

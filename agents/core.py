@@ -179,8 +179,6 @@ class Policy:
     def __init__(self, state_space, action_space):
         self.state_space = state_space
         self.action_space = action_space
-        self.greedy = Greedy(self)
-        self.epsilon_greedy = EpsilonGreedy(self)
 
     def sample_action(self, state):
         raise NotImplementedError
@@ -189,6 +187,9 @@ class Policy:
         raise NotImplementedError
 
     def get_action_prob(self, state, action):
+        raise NotImplementedError
+
+    def set_action_probs(self, state, probs):
         raise NotImplementedError
 
     def get_policy(self):
@@ -200,57 +201,39 @@ class Policy:
     def display(self):
         raise NotImplementedError
 
-class Greedy(object):
+class Greedy(Policy):
 
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, values):
+        super(Greedy, self).__init__(None, None)
+        self.values = values
 
     def sample_action(self, state):
-        return np.argmax(self.parent.get_action_probs(state))
+        return np.argmax(self.values.get_q_values(state))
 
     def get_action_probs(self, state):
-        return [1 if i == self.sample_action(state) else 0 for i in range(self.parent.num_actions)]
+        return [1 if i == self.sample_action(state) else 0 for i in range(self.values.num_actions)]
 
     def get_action_prob(self, state, action):
         return 1 if action == self.sample_action(state) else 0
 
-    def set_action(self, state, action):
-        if self.parent.get_action_prob(state, action) == 1:
-            return False
+class EpsilonGreedy(Policy):
 
-        for a in range(self.parent.num_actions):
-            self.parent.policy[state][a] = 1 if a == action else 0
-        return True
-
-class EpsilonGreedy(object):
-
-    def __init__(self, parent, epsilon=0.5):
-        self.parent = parent
+    def __init__(self, values, epsilon=0.5):
+        super(EpsilonGreedy, self).__init__(None, None)
+        self.values = values
         self.epsilon = epsilon
 
     def sample_action(self, state):
-        return np.random.choice(range(self.parent.num_actions), p=self.get_action_probs(state))
+        return np.random.choice(range(self.values.num_actions), p=self.get_action_probs(state))
 
     def get_action_probs(self, state):
-        optimal_action = np.argmax(self.parent.get_action_probs(state))
-        probs = [(1-self.epsilon) + (self.epsilon/self.parent.num_actions) if a == optimal_action else \
-                (self.epsilon/self.parent.num_actions) for a in range(self.parent.num_actions)]
+        optimal_action = np.argmax(self.values.get_q_values(state))
+        probs = [(1-self.epsilon) + (self.epsilon/self.values.num_actions) if a == optimal_action else \
+                (self.epsilon/self.values.num_actions) for a in range(self.values.num_actions)]
         return probs
 
     def get_action_prob(self, state, action):
         return self.get_action_probs(state)[action]
-
-    def set_action(self, state, action):
-        if np.isclose(1-self.epsilon + (self.epsilon / self.parent.num_actions),
-                      self.parent.get_action_prob(state, action)):
-            return False
-
-        for a in range(self.parent.num_actions):
-            if a == action:
-                self.parent.policy[state][a] = 1 - self.epsilon + (self.epsilon / self.parent.num_actions)
-            else:
-                self.parent.policy[state][a] = self.epsilon / self.parent.num_actions
-        return True
 
 class TabularPolicy(Policy):
 
@@ -275,6 +258,20 @@ class TabularPolicy(Policy):
     def get_action_prob(self, state, action):
         return self.policy[state][action]
 
+    def set_action_probs(self, state, new_probs):
+        current_probs = self.get_action_probs(state)
+        if np.all(np.isclose(current_probs, new_probs)):
+            return False
+
+        for a, p in enumerate(new_probs):
+            self.policy[state][a] = p
+        return True
+
+    def set_optimal_action(self, state, action, epsilon = 0):
+        probs = [(1-epsilon) + (epsilon / self.num_actions) if a == action
+                 else (epsilon/self.num_actions) for a in range(self.num_actions)]
+        return self.set_action_probs(state, probs)
+
     def get_policy(self):
         return self.policy
 
@@ -297,6 +294,6 @@ class GridPolicy(TabularPolicy):
         for state in range(self.num_states):
             if (not state == 0) and (state % self.shape[1] == 0):
                 print()
-            best_action = self.greedy.sample_action(state)
+            best_action = np.argmax(self.get_action_probs(state))
             print(action_symbols[best_action], end = "")
         print()

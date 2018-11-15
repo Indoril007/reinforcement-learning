@@ -1,4 +1,5 @@
 import numpy as np
+from .core import Greedy, EpsilonGreedy
 
 class DynamicMethods:
 
@@ -11,6 +12,8 @@ class DynamicMethods:
 
         self.agent = agent
         self.policy = agent.policy
+        self.greedy = Greedy(agent.values)
+        self.epsilon_greedy = EpsilonGreedy(agent.values)
         self.discount_factor = agent.discount_factor
 
     def policy_evaluation(self, stop_threshold=0.00001, max_iterations=None):
@@ -81,7 +84,7 @@ class DynamicMethods:
                     maxval = action_value
                     optimal_action = action
 
-            changed = changed or self.policy.greedy.set_action(state, optimal_action)
+            changed = changed or self.policy.set_optimal_action(state, optimal_action)
         return changed
 
     def policy_iteration(self, eval_iterations = 100):
