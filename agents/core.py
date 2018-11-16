@@ -1,5 +1,6 @@
 from gym.spaces import discrete
 import numpy as np
+import tkinter as tk
 
 class Agent(object):
     def __init__(self, state_space, action_space, discount_factor):
@@ -60,7 +61,7 @@ class Values(object):
     def get_all_q_values(self):
         raise NotImplementedError
 
-    def display(self):
+    def display(self, canvas = None, true_values = None):
         raise NotImplementedError
 
 class TabularValues(Values):
@@ -158,9 +159,32 @@ class GridValues(TabularValues):
         else:
             raise TypeError("state should be an integer or tuple")
 
-    def display(self):
-        for r in range(0, self.num_states, self.nCols):
-            print(" ".join(map(lambda x: "{:.4f}".format(x), self.values[r:r+self.nCols])))
+    def _get_color_string(self, error):
+        error = min(1, error)
+        red = "{:0>2x}".format(int(error*255))
+        green = "{:0>2x}".format(int((1-error)*255))
+        return "#" + red + green + "00"
+
+    def display(self, window = None, true_values = None):
+        if window is None:
+            for r in range(0, self.num_states, self.nCols):
+                print(" ".join(map(lambda x: "{:.4f}".format(x), self.values[r:r+self.nCols])))
+        else:
+            for i in range(window.nrow):
+                for j in range(window.ncol):
+                    x = j*window.unit + 3
+                    y = (i+1)*window.unit
+
+                    if true_values is not None:
+                        error = np.abs(true_values[i*window.ncol+j] - self.values[i*window.ncol+j])
+                        color = self._get_color_string(error)
+                    else:
+                        color = "#000000"
+
+                    window.canvas.create_text(x,y, anchor=tk.SW, fill=color, text="{:.3f}".format(self.values[i*window.ncol+j]))
+                    window.update_idletasks()
+                    window.update()
+
 
     def display_q_values(self):
         lines = ["|", "|", "|", "-"]
@@ -218,16 +242,21 @@ class Greedy(Policy):
 
 class EpsilonGreedy(Policy):
 
-    def __init__(self, values, epsilon=0.5):
+    def __init__(self, values, epsilon=1):
         super(EpsilonGreedy, self).__init__(None, None)
         self.values = values
+        self.epsilon = epsilon
+
+    def set_epsilon(self, epsilon):
         self.epsilon = epsilon
 
     def sample_action(self, state):
         return np.random.choice(range(self.values.num_actions), p=self.get_action_probs(state))
 
     def get_action_probs(self, state):
-        optimal_action = np.argmax(self.values.get_q_values(state))
+        q_vals = self.values.get_q_values(state)
+        max = np.amax(q_vals)
+        optimal_action = np.random.choice(np.argwhere(np.isclose(q_vals, max)).ravel())
         probs = [(1-self.epsilon) + (self.epsilon/self.values.num_actions) if a == optimal_action else \
                 (self.epsilon/self.values.num_actions) for a in range(self.values.num_actions)]
         return probs
