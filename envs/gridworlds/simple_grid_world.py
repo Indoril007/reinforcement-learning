@@ -57,18 +57,18 @@ class SimpleGridWorld(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['ansi', 'human']}
 
-    def __init__(self, world_array=WORLD_1, isd=DEFAULT_ISD, action_error = 0.0):
+    def __init__(self, world_array=DEFAULT_WORLD, isd=DEFAULT_ISD, action_error = 0.0):
         assert type(world_array) is np.ndarray
         assert type(isd) is np.ndarray
         self.end_states = DEFAULT_END_STATES
-        self.nrow, self.ncol = world_array.shape
+        self.nrows, self.ncols = world_array.shape
         self.shape = world_array.shape
         self.world_array = world_array
         self.nS = world_array.size
         self.nA = 4
         self.isd = isd
         self.action_error = action_error
-        self.P = {s: {a: [] for a in range(self.nA)} for s in range(self.nS)}
+        self.P = np.zeros(shape=(self.nS, self.nA, 4, 4))
 
         self.master = None
 
@@ -90,29 +90,28 @@ class SimpleGridWorld(discrete.DiscreteEnv):
                     reward = int(state_val) if state_val != 'd' else 1
                     done = state_val == "d"
                     transition_prob = 1-self.action_error if action==direction else self.action_error / 3
-                    transitions.append((transition_prob,  new_state, reward, done))
+                    np.copyto(transitions[direction], [transition_prob,  new_state, reward, done])
 
     def _to_state(self, row, col):
-        return row*self.ncol + col
+        return row*self.ncols + col
 
     def _to_coords(self, state):
-        i = state // self.ncol
-        j = state % self.ncol
+        i = state // self.ncols
+        j = state % self.ncols
         return (i,j)
-
 
     def _move(self, row, col, action):
         if action == UP:
             row = max(row-1,0)
         elif action == DOWN:
-            row = min(row+1, self.nrow-1)
+            row = min(row+1, self.nrows-1)
         elif action == LEFT:
             col = max(col-1, 0)
         elif action == RIGHT:
-            col = min(col+1, self.ncol-1)
+            col = min(col+1, self.ncols-1)
         return (row,col)
 
-    def render(self, mode='ansi'):
+    def render(self, mode='ansi', window = None):
         if mode == 'ansi':
             string = ""
             for i, row in enumerate(self.world_array):
@@ -121,18 +120,17 @@ class SimpleGridWorld(discrete.DiscreteEnv):
                 string += "\n"
             return string
         elif mode == 'human':
-            if self.master is None:
-                self.master = tk.Tk()
-                self.master.canvas = tk.Canvas(self.master, bg='white', height=self.nrow*UNIT, width=self.ncol*UNIT)
+            if window.canvas is None:
+                window.canvas = tk.Canvas(window, bg='white', height=self.nrows*UNIT, width=self.ncols*UNIT)
 
-                for col in range(0, self.ncol*UNIT, UNIT):
-                    x0, y0, x1, y1 = col, 0, col, self.nrow*UNIT
-                    self.master.canvas.create_line(x0, y0, x1, y1)
-                for row in range(0, self.nrow*UNIT, UNIT):
-                    x0, y0, x1, y1 = 0, row, self.ncol*UNIT, row
-                    self.master.canvas.create_line(x0, y0, x1, y1)
+                for col in range(0, self.ncols*UNIT, UNIT):
+                    x0, y0, x1, y1 = col, 0, col, self.nrows*UNIT
+                    window.canvas.create_line(x0, y0, x1, y1)
+                for row in range(0, self.nrows*UNIT, UNIT):
+                    x0, y0, x1, y1 = 0, row, self.ncols*UNIT, row
+                    window.canvas.create_line(x0, y0, x1, y1)
             else:
-                self.master.canvas.delete(self.master.canvas.state_drawing)
+                window.canvas.delete(window.canvas.state_drawing)
 
             i, j = self._to_coords(self.s)
             center_y = (i+0.5)*UNIT
@@ -141,15 +139,14 @@ class SimpleGridWorld(discrete.DiscreteEnv):
             x1 = center_x + UNIT*0.1
             y0 = center_y - UNIT*0.1
             y1 = center_y + UNIT*0.1
-            self.master.canvas.state_drawing = self.master.canvas.create_oval([x0, y0, x1, y1])
-            self.master.unit = UNIT
-            self.master.ncol = self.ncol
-            self.master.nrow = self.nrow
+            window.canvas.state_drawing = window.canvas.create_oval([x0, y0, x1, y1])
+            window.unit = UNIT
+            window.ncols = self.ncols
+            window.nrows = self.nrows
 
-            self.master.canvas.pack()
-            self.master.update_idletasks()
-            self.master.update()
-            return self.master
+            window.canvas.pack()
+            window.update_idletasks()
+            window.update()
 
 
 

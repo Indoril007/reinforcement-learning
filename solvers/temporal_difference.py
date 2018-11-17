@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from .core import Greedy, EpsilonGreedy
+from agents.core import Greedy, EpsilonGreedy
 
 class TemporalDifference:
 

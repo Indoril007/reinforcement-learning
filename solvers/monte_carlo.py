@@ -1,6 +1,6 @@
 import numpy as np
 from collections import defaultdict
-from .core import Greedy, EpsilonGreedy
+from agents.core import Greedy, EpsilonGreedy
 
 
 class MonteCarlo:

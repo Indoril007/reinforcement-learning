@@ -1,42 +1,53 @@
 import gym
 import envs
-import numpy as np
-from agents.core import GridAgent
-from agents.dynamic_methods import DynamicMethods
+from tkinter import *
+from agents.grid import GridAgent
+from solvers.dynamic_methods import DynamicMethods
 # from agents.dynamic_methods import policy_evaluation, policy_improvement, policy_iteration, value_iteration
-from agents.monte_carlo import MonteCarlo
-from agents.temporal_difference import TemporalDifference
+from solvers.temporal_difference import TemporalDifference
 
 env = gym.make('SimpleGridWorld-v0')
 env.reset()
-env.step(0)
-window = env.render('human')
-agent1 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
-agent2 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
-DM = DynamicMethods(env, agent1)
-DM.policy_iteration()
-true_values = agent1.values.get_all_values()
-#agent1.values.display(window, true_values=true_values)
-print("test")
+window = Tk()
+window.canvas = None
+env.render(mode='human', window=window)
+
+agent = GridAgent(env.shape, discount=0.95)
+DM = DynamicMethods(env, agent)
+DM.policy_evaluation(iterations=100000)
+agent.display_values(window)
 input()
-# DM.policy = DM.epsilon_greedy
-# DM.q_evaluation()
-#
-# true_q_values = agent1.values.get_all_q_values()
+
+
+# env.reset()
+# env.step(0)
+# window = env.render('human')
+# agent1 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
+# agent2 = GridAgent(env.observation_space, env.action_space, env.shape, discount_factor = 0.95)
+# DM = DynamicMethods(env, agent1)
+# DM.policy_iteration()
 # true_values = agent1.values.get_all_values()
-# agent1.display_values()
-# agent1.display_policy()
-# agent1.display_q_values()
-
-# policy = agent1.policy.get_policy()
-# agent2.policy.set_policy(policy)
-
-# MC = MonteCarlo(env, agent2)
-# MC.off_policy_q_iteration(max_episodes=50000, true_values=np.array(true_q_values))
-# MC.policy_improvement()
-
-TD = TemporalDifference(env, agent2)
-TD.sarsa(max_episodes=120000, true_values=true_q_values)
+# #agent1.values.display(window, true_values=true_values)
+# print("test")
+# input()
+# # DM.policy = DM.epsilon_greedy
+# # DM.q_evaluation()
+# #
+# # true_q_values = agent1.values.get_all_q_values()
+# # true_values = agent1.values.get_all_values()
+# # agent1.display_values()
+# # agent1.display_policy()
+# # agent1.display_q_values()
+#
+# # policy = agent1.policy.get_policy()
+# # agent2.policy.set_policy(policy)
+#
+# # MC = MonteCarlo(env, agent2)
+# # MC.off_policy_q_iteration(max_episodes=50000, true_values=np.array(true_q_values))
+# # MC.policy_improvement()
+#
+# TD = TemporalDifference(env, agent2)
+# TD.sarsa(max_episodes=120000, true_values=true_q_values)
 #
 # agent2.display_values()
 # agent2.display_q_values()
