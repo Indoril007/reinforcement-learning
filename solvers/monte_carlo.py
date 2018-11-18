@@ -5,52 +5,100 @@ from agents.core import Greedy, EpsilonGreedy
 
 class MonteCarlo:
 
-    def __init__(self, env, agent):
+    def __init__(self, env, agent, style='every'):
         self.env = env
-        self.num_states = env.observation_space.n
-        self.num_actions = env.action_space.n
+        self.nS = env.nS
+        self.nA = env.nA
 
         self.agent = agent
         self.policy = agent.policy
-        self.greedy = Greedy(self.agent.values)
-        self.epsilon_greedy = EpsilonGreedy(self.agent.values)
-        self.discount_factor = agent.discount_factor
+        # self.greedy = Greedy(self.agent.values)
+        # self.epsilon_greedy = EpsilonGreedy(self.agent.values)
+        self.discount = agent.discount
 
-    def value_prediction(self, style = 'first', max_steps = 1000, max_episodes=100):
+        self.style = style
 
-        num_visits = defaultdict(int)
+    def value_prediction(self, steps: int = 1000, episodes: int = 100) -> None:
+        """
+        This function performs monte carlo value prediction. This is achieved my sampling a number of episodes using the
+        current policy and predicting values of states according to these episodes.
+        :param steps: The maximum amount of steps taken in an episode
+        :param episodes: The number of episodes to run value prediction for
+        :param style: if style is 'first' only the first encounters of each state in an episode are considered, if style
+            is 'every' then every encounter of a state is considered in each episode
+        """
 
-        for e in range(max_episodes):
-            obs = self.env.reset()
+        V = self.agent.values
+        Q = self.agent.q_values
 
-            episode = []
-            visits = defaultdict(list)
-            for t in range(max_steps):
-                action = self.policy.sample_action(obs)
-                next_obs, reward, done, _ = self.env.step(action)
-                episode.append([obs, action, reward])
+        # Number of times states have been visited over all episodes
+        N = defaultdict(int)
 
-                if (style == 'every') or (style == 'first' and not obs in visits):
-                    visits[obs].append(t)
-                    num_visits[obs] += 1
+        # Number of times state/action pairs have been visited over all episodes
+        Q_N = defaultdict(lambda: defaultdict(int))
 
-                if done:
-                    break
-                obs = next_obs
+        for e in range(episodes):
+            episode, state_visits, Q_visits = self.generate_episode(N, Q_N, steps)
 
+            # Backtracking from the end to the start of the episode calculating the returns
             ret = 0
             for step in episode[::-1]:
                 _, _, reward = step
-                ret = self.discount_factor * ret + reward
+                ret = self.discount * ret + reward
                 step.append(ret)
 
+            # Updating value estimates
             for obs in visits:
-                visited_timesteps = visits[obs]
-                n = len(visited_timesteps)
-                sum_returns = sum([episode[t][3] for t in visited_timesteps])
-                old_value = self.agent.get_value(int(obs))
-                new_value = old_value + (1/num_visits[obs]) * (sum_returns - n*old_value)
-                self.agent.set_value(int(obs), new_value)
+                sum_returns = sum([episode[t][3] for t in visits[obs]])
+                n = len(visits[obs])
+                V[obs] = V[obs] + (1/N[obs]) * (sum_returns - n*V[obs])
+
+    def generate_episode(self, N: defaultdict, Q_N: defaultdict, steps: int) -> (list, defaultdict, defaultdict):
+        """
+        This function generates a single episode by sampling and taking actions according to the policy until a done
+        state is reached or the maximum number of steps have been taken
+        :param N: N is the dictionary keeping track of the total number of visits to states over all episodes
+        :param Q_N: Q_N is the dictionary keeping track of the total number of visits to state/actions pairs over all
+            episodes
+        :param steps: The maximum number of steps to take in the episode
+        :return: a tuple (episode, state_visits, q_visits)
+            episode         -> The generated episode which is a list containing (state, action, reward) tuples for each
+                time step
+            state_visits    -> A dictionary giving the timesteps at which states were visited this episode
+            q_visits        -> A dictionary giving the timesteps at which state/action pairs were visited this episode
+        """
+        obs = self.env.reset()
+        episode = []
+
+        # Tracks the time steps where each state was encountered during this episode
+        state_visits = defaultdict(list)
+
+        # Tracks the time steps where each state/action pair was encountered during this episode
+        Q_visits = defaultdict(lambda: defaultdict(list))
+
+        for t in range(steps):
+            action = self.policy.sample(obs)
+            next_obs, reward, done, _ = self.env.step(action)
+            episode.append([int(obs), int(action), reward])
+
+            if self.style == 'every':
+                state_visits[obs].append(t)
+                N[obs] += 1
+                Q_visits[obs][action].append(t)
+                Q_N[obs][action] += 1
+            elif self.style == 'first':
+                if obs not in visits:
+                    state_visits[obs].append(t)
+                    N[obs] += 1
+                if action not in Q_visits[obs]:
+                    Q_visits[obs][action].append(t)
+                    Q_N[obs][action] += 1
+
+            if done:
+                break
+            obs = next_obs
+
+        return episode, state_visits, Q_visits
 
     def q_prediction(self, style = 'first', max_steps = 1000, max_episodes=100):
 

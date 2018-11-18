@@ -80,14 +80,6 @@ class GridAgent(TabularAgent):
                 window.update_idletasks()
                 window.update()
 
-
-
-
-
-
-
-
-
 def error2color(self, error):
     error = min(1, error)
     red = "{:0>2x}".format(int(error*255))
