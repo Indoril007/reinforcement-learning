@@ -1,5 +1,6 @@
 import numpy as np
 import tkinter
+from tkinter.font import Font
 from .tabular import TabularAgent
 
 class GridAgent(TabularAgent):
@@ -60,8 +61,32 @@ class GridAgent(TabularAgent):
     def display_q_values(self, window = None, true_values = None):
         pass
 
-    def display_policy(self, window = None):
-        pass
+    def display_policy(self, window = None, optimal_policy=None):
+        if not (self.nrows == window.nrows and self.ncols == window.ncols):
+            raise ValueError("Dimensions of the window grid do not match up with the agent's grid")
+
+        arrows = ["^", "v", "<", ">"]
+        pi = self.policy.get()
+        for i in range(self.nrows):
+            for j in range(self.ncols):
+                state = self.ij2state(i,j)
+                x = (j + 0.5) * window.unit
+                y = (i + 0.5) * window.unit
+
+                action = np.argmax(pi[state])
+                text = arrows[action]
+                font = Font(size=20)
+                window.canvas.policy_text = window.canvas.create_text(x, y, font=font, anchor=tkinter.CENTER, text=text)
+                window.update_idletasks()
+                window.update()
+
+
+
+
+
+
+
+
 
 def error2color(self, error):
     error = min(1, error)

@@ -14,8 +14,10 @@ env.render(mode='human', window=window)
 
 agent = GridAgent(env.shape, discount=0.95)
 DM = DynamicMethods(env, agent)
-DM.policy_evaluation(iterations=100000)
+DM.value_iteration(iterations=10000)
+DM.policy_improvement()
 agent.display_values(window)
+agent.display_policy(window)
 input()
 
 

@@ -57,7 +57,7 @@ class SimpleGridWorld(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['ansi', 'human']}
 
-    def __init__(self, world_array=DEFAULT_WORLD, isd=DEFAULT_ISD, action_error = 0.0):
+    def __init__(self, world_array=WORLD_1, isd=DEFAULT_ISD, action_error = 0.0):
         assert type(world_array) is np.ndarray
         assert type(isd) is np.ndarray
         self.end_states = DEFAULT_END_STATES

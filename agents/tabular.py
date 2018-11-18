@@ -57,8 +57,6 @@ class TabularPolicy(object):
         np.copyto(self.policy[state], probs)
         return True
 
-    def __getitem__(self, item):
-        return self.policy[item]
+    def get(self):
+        return self.policy
 
-    def __iter__(self):
-        return self.policy.__iter__()
