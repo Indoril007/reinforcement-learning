@@ -38,7 +38,7 @@ class TabularPolicy(object):
         :param state: The state value
         :return: The sampled action
         """
-        return np.random.choice(range(self.nA), p=self.policy[state])
+        return np.random.choice(self.nA, p=self.policy[state])
 
     def set(self, state: int, action: int, epsilon: float = 0) -> bool:
         """

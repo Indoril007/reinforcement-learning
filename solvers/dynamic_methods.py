@@ -36,7 +36,7 @@ class DynamicMethods:
         """
         V = self.agent.values
         gamma = self.discount
-        T = np.transpose(self.env.P, (3, 0, 1, 2))
+        T = np.transpose(self.env.numpized_transitions, (3, 0, 1, 2))
         probs, next_states, rewards, dones = T
         next_states = next_states.astype(np.int64)
 

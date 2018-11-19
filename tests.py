@@ -3,6 +3,7 @@ import envs
 from tkinter import *
 from agents.grid import GridAgent
 from solvers.dynamic_methods import DynamicMethods
+from solvers.monte_carlo import MonteCarlo
 # from agents.dynamic_methods import policy_evaluation, policy_improvement, policy_iteration, value_iteration
 from solvers.temporal_difference import TemporalDifference
 
@@ -12,12 +13,14 @@ window = Tk()
 window.canvas = None
 env.render(mode='human', window=window)
 
-agent = GridAgent(env.shape, discount=0.95)
-DM = DynamicMethods(env, agent)
-DM.value_iteration(iterations=10000)
-DM.policy_improvement()
-agent.display_values(window)
-agent.display_policy(window)
+agent1 = GridAgent(env.shape, discount=0.95)
+agent2 = GridAgent(env.shape, discount=0.95)
+MC = MonteCarlo(env, agent1)
+MC.value_prediction(episodes=1000)
+DM = DynamicMethods(env, agent2)
+DM.policy_evaluation()
+true_values = agent2.values
+agent1.display_values(window, true_values=true_values)
 input()
 
 

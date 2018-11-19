@@ -68,11 +68,11 @@ class SimpleGridWorld(discrete.DiscreteEnv):
         self.nA = 4
         self.isd = isd
         self.action_error = action_error
-        self.P = np.zeros(shape=(self.nS, self.nA, 4, 4))
-
+        self.P = [ [ [] for _ in range(self.nA)  ] for _ in range(self.nS) ]
         self.master = None
 
         self._init_transitions()
+        self.numpized_transitions = np.array(self.P)
 
         super(SimpleGridWorld, self).__init__(self.nS, self.nA, self.P, self.isd)
 
@@ -90,7 +90,7 @@ class SimpleGridWorld(discrete.DiscreteEnv):
                     reward = int(state_val) if state_val != 'd' else 1
                     done = state_val == "d"
                     transition_prob = 1-self.action_error if action==direction else self.action_error / 3
-                    np.copyto(transitions[direction], [transition_prob,  new_state, reward, done])
+                    transitions.append([transition_prob, new_state, reward, done])
 
     def _to_state(self, row, col):
         return row*self.ncols + col
