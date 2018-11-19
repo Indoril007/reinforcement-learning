@@ -1,4 +1,6 @@
 import numpy as np
+from .greedy_policy import GreedyPolicy
+
 
 class TabularAgent(object):
     """
@@ -6,19 +8,24 @@ class TabularAgent(object):
     This is in contrast to agents that use function approximation for values and/or policy
     """
 
-    def __init__(self, nS: int, nA: int, discount: float) -> None:
+    def __init__(self, nS: int, nA: int, greedy: bool = False, epsilon: float = 0) -> None:
         """
         :param nS: number of states in state space
         :param nA: number of actions in action space
-        :param discount: the discount factor to be used in calculating return
+        :param greedy: number of states in state space
+        :param epsilon: number of states in state space
         """
 
         self.nS = nS
         self.nA = nA
-        self.discount = discount
         self.values = np.zeros(shape=nS)
         self.q_values = np.zeros(shape=(nS, nA))
-        self.policy = TabularPolicy(nS, nA)
+
+        if greedy:
+            self.policy = GreedyPolicy(self.q_values, epsilon)
+        else:
+            self.policy = TabularPolicy(nS, nA)
+
 
 class TabularPolicy(object):
 

@@ -5,14 +5,13 @@ from .tabular import TabularAgent
 
 class GridAgent(TabularAgent):
 
-    def __init__(self, shape: tuple, discount: float) -> None:
+    def __init__(self, shape: tuple, greedy: bool = False, epsilon: float = 0) -> None:
         """
 
         :param shape: The shape of the grid world given as (number of rows, number of columns)
-        :param discount: The disocunt factor to be used in calculating return
         """
         self.nrows, self.ncols = shape
-        super(GridAgent, self).__init__(self.ncols*self.nrows, 4, discount)
+        super(GridAgent, self).__init__(self.ncols*self.nrows, 4, greedy, epsilon)
 
     def ij2state(self, i: int, j: int) -> int:
         """
@@ -42,6 +41,8 @@ class GridAgent(TabularAgent):
         """
         if not (self.nrows == window.nrows and self.ncols == window.ncols):
             raise ValueError("Dimensions of the window grid do not match up with the agent's grid")
+
+        values_text = []
         for i in range(self.nrows):
             for j in range(self.ncols):
                 state = self.ij2state(i,j)
@@ -53,13 +54,38 @@ class GridAgent(TabularAgent):
                     color = error2color(error)
                 else:
                     color = "#000000"
-                text = "{:.3f}".format(self.values[state])
-                window.canvas.values_text = window.canvas.create_text(x,y, anchor=tkinter.SW, fill=color, text=text)
-                window.update_idletasks()
-                window.update()
+                text = "{:.3g}".format(self.values[state])
+                values_text.append(window.canvas.create_text(x,y, anchor=tkinter.SW, fill=color, text=text))
+
+        window.canvas.values_text = values_text
+        window.update_idletasks()
+        window.update()
 
     def display_q_values(self, window = None, true_values = None):
-        pass
+        if not (self.nrows == window.nrows and self.ncols == window.ncols):
+            raise ValueError("Dimensions of the window grid do not match up with the agent's grid")
+
+        q_values_text = []
+        for i in range(self.nrows):
+            for j in range(self.ncols):
+                state = self.ij2state(i,j)
+
+                anchors = [tkinter.N, tkinter.S, tkinter.W, tkinter.E]
+                for action, pos in enumerate([(j+0.5, i+0.05),(j+0.5, i+0.95),(j+0.05, i+0.5),(j+0.95, i+0.5)]):
+                    x = pos[0]*window.unit
+                    y = pos[1]*window.unit
+
+                    if true_values is not None:
+                        error = np.abs(true_values[state][action] - self.q_values[state][action])
+                        color = error2color(error)
+                    else:
+                        color = "#000000"
+                    text = "{:.3g}".format(self.q_values[state][action])
+                    q_values_text.append(window.canvas.create_text(x,y, anchor=anchors[action], fill=color, text=text))
+
+        window.canvas.q_values_text = q_values_text
+        window.update_idletasks()
+        window.update()
 
     def display_policy(self, window = None, optimal_policy=None):
         if not (self.nrows == window.nrows and self.ncols == window.ncols):

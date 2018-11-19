@@ -2,6 +2,7 @@ import gym
 import envs
 from tkinter import *
 from agents.grid import GridAgent
+from agents.greedy_policy import GreedyPolicy
 from solvers.dynamic_methods import DynamicMethods
 from solvers.monte_carlo import MonteCarlo
 # from agents.dynamic_methods import policy_evaluation, policy_improvement, policy_iteration, value_iteration
@@ -13,14 +14,16 @@ window = Tk()
 window.canvas = None
 env.render(mode='human', window=window)
 
-agent1 = GridAgent(env.shape, discount=0.95)
-agent2 = GridAgent(env.shape, discount=0.95)
+agent1 = GridAgent(env.shape, greedy=True, epsilon=0.1)
+agent2 = GridAgent(env.shape, greedy=True, epsilon=0)
 MC = MonteCarlo(env, agent1)
-MC.value_prediction(episodes=1000)
+target = GreedyPolicy(agent1.q_values, epsilon=0)
+MC.off_policy_q_prediction(target, episodes=10)
+
 DM = DynamicMethods(env, agent2)
 DM.policy_evaluation()
-true_values = agent2.values
-agent1.display_values(window, true_values=true_values)
+true_values = agent2.q_values
+agent1.display_q_values(window)
 input()
 
 

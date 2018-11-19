@@ -2,14 +2,15 @@ import numpy as np
 
 class DynamicMethods:
 
-    def __init__(self, env, agent):
+    def __init__(self, env, agent, discount=0.95):
         self.env = env
         self.nS = env.nS
         self.nA = env.nA
 
         self.agent = agent
         self.policy = agent.policy
-        self.discount = agent.discount
+
+        self.discount = discount
 
     def policy_evaluation(self, threshold: float = 0.00001, iterations: int = None) -> None:
         """
@@ -35,12 +36,15 @@ class DynamicMethods:
         :return: Returns an shape=(nS, nA) numpy array with elements giving action values
         """
         V = self.agent.values
+        Q = self.agent.q_values
         gamma = self.discount
         T = np.transpose(self.env.numpized_transitions, (3, 0, 1, 2))
         probs, next_states, rewards, dones = T
         next_states = next_states.astype(np.int64)
 
         action_values = np.sum(probs * (rewards + gamma*(1-dones)*V[next_states]), axis=2)
+        action_values[self.env.end_states, :] = 0
+        np.copyto(Q, action_values)
 
         return action_values
 

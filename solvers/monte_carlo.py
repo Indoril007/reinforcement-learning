@@ -1,21 +1,19 @@
 import numpy as np
 from collections import defaultdict
-from agents.core import Greedy, EpsilonGreedy
+from agents.greedy_policy import GreedyPolicy
 
 
 class MonteCarlo:
 
-    def __init__(self, env, agent, style='every'):
+    def __init__(self, env, agent, discount=0.95, style='every'):
         self.env = env
         self.nS = env.nS
         self.nA = env.nA
 
         self.agent = agent
         self.policy = agent.policy
-        # self.greedy = Greedy(self.agent.values)
-        # self.epsilon_greedy = EpsilonGreedy(self.agent.values)
-        self.discount = agent.discount
 
+        self.discount = 0.99
         self.style = style
 
     def value_prediction(self, steps: int = 1000, episodes: int = 100) -> None:
@@ -38,7 +36,7 @@ class MonteCarlo:
         Q_N = defaultdict(lambda: defaultdict(int))
 
         for e in range(episodes):
-            episode, state_visits, q_visits = self.generate_episode(N, Q_N, steps)
+            episode, state_visits, q_visits = self.generate_episode(steps, N, Q_N)
 
             # Backtracking from the end to the start of the episode calculating the returns
             ret = 0
@@ -60,7 +58,7 @@ class MonteCarlo:
                     q_n = len(q_visits[obs][action])
                     Q[obs][action] = Q[obs][action] + (1/Q_N[obs][action]) * (q_sum_returns - q_n*Q[obs][action])
 
-    def generate_episode(self, N: defaultdict, Q_N: defaultdict, steps: int) -> (list, defaultdict, defaultdict):
+    def generate_episode(self, steps: int = 1000, N: defaultdict = None, Q_N: defaultdict = None) -> (list, defaultdict, defaultdict):
         """
         This function generates a single episode by sampling and taking actions according to the policy until a done
         state is reached or the maximum number of steps have been taken
@@ -91,16 +89,24 @@ class MonteCarlo:
 
             if self.style == 'every':
                 state_visits[obs].append(t)
-                N[obs] += 1
                 q_visits[obs][action].append(t)
-                Q_N[obs][action] += 1
+
+                if N is not None:
+                    N[obs] += 1
+
+                if Q_N is not None:
+                    Q_N[obs][action] += 1
+
             elif self.style == 'first':
                 if obs not in visits:
                     state_visits[obs].append(t)
-                    N[obs] += 1
+                    if N is not None:
+                        N[obs] += 1
+
                 if action not in Q_visits[obs]:
                     q_visits[obs][action].append(t)
-                    Q_N[obs][action] += 1
+                    if Q_N is not None:
+                        Q_N[obs][action] += 1
 
             if done:
                 break
@@ -108,83 +114,28 @@ class MonteCarlo:
 
         return episode, state_visits, q_visits
 
-    # def q_prediction(self, style = 'first', max_steps = 1000, max_episodes=100):
+    def off_policy_q_prediction(self, target, steps=1000, episodes=100):
+        Q = self.agent.q_values
+        pi_target = target.get()
+        pi_behaviour = self.agent.policy.get()
 
-    #     num_visits = defaultdict(lambda: defaultdict(int))
+        cum_weights = defaultdict(lambda: defaultdict(int))
 
-    #     for e in range(max_episodes):
-    #         obs = self.env.reset()
+        for e in range(episodes):
+            episode, state_visits, q_visits = self.generate_episode(steps)
 
-    #         episode = []
-    #         visits = defaultdict(lambda: defaultdict(list))
-    #         for t in range(max_steps):
-    #             action = self.policy.sample_action(obs)
-    #             next_obs, reward, done, _ = self.env.step(action)
-    #             episode.append([obs, action, reward])
+            ret = 0
+            weight = 1
+            for step in episode[::-1]:
+                print(e)
+                obs, action, reward = step
+                ret = self.discount * ret + reward
+                cum_weights[obs][action] += weight
 
-    #             if (style == 'every') or (style == 'first' and not action in visits[obs]):
-    #                 visits[obs][action].append(t)
-    #                 num_visits[obs][action] += 1
-
-    #             if done:
-    #                 break
-    #             obs = next_obs
-
-    #         ret = 0
-    #         for step in episode[::-1]:
-    #             _, _, reward = step
-    #             ret = self.discount_factor * ret + reward
-    #             step.append(ret)
-
-    #         for obs in visits:
-    #             for action in visits[obs]:
-    #                 visited_timesteps = visits[obs][action]
-    #                 n = len(visited_timesteps)
-    #                 sum_returns = sum([episode[t][3] for t in visited_timesteps])
-    #                 old_value = self.agent.get_q_value(int(obs), action)
-    #                 new_value = old_value + (1/num_visits[obs][action]) * (sum_returns - n*old_value)
-    #                 self.agent.set_q_value(int(obs), action, new_value)
-
-    # def off_policy_q_prediction(self, max_steps = 1000, max_episodes=100, style='every'):
-    #     target = self.greedy
-    #     behaviour = self.epsilon_greedy
-
-    #     cum_weights = defaultdict(lambda: defaultdict(int))
-
-    #     for e in range(max_episodes):
-    #         if e % 10 == 0:
-    #             print("episode {}".format(e))
-    #         obs = self.env.reset()
-
-    #         episode = []
-    #         visits = defaultdict(lambda: defaultdict(list))
-    #         for t in range(max_steps):
-    #             action = behaviour.sample_action(obs)
-    #             next_obs, reward, done, _ = self.env.step(action)
-    #             episode.append([obs, action, reward])
-
-    #             if style == 'every':
-    #                 visits[obs][action].append(t)
-
-    #             if done:
-    #                 break
-    #             obs = next_obs
-
-    #         ret = 0
-    #         weight = 1
-    #         for step in episode[::-1]:
-    #             obs, action, reward = step
-    #             ret = self.discount_factor * ret + reward
-    #             cum_weights[obs][action] += weight
-    #             old_value = self.agent.get_q_value(int(obs), action)
-    #             new_value = old_value + (weight/cum_weights[obs][action]) * (ret - old_value)
-    #             self.agent.set_q_value(int(obs), action, new_value)
-
-    #             importance_ratio = (target.get_action_prob(obs, action) /
-    #                                  behaviour.get_action_prob(obs, action))
-    #             weight = weight * importance_ratio
-    #             if weight == 0:
-    #                 break
+                Q[obs][action] = Q[obs][action] + (weight/cum_weights[obs][action]) * (ret - Q[obs][action])
+                weight = weight * (pi_target[obs][action] / pi_behaviour[obs][action])
+                if weight == 0:
+                    break
 
     # def off_policy_q_iteration(self, max_steps = 5000, max_episodes=100, true_values=None):
     #     target = self.greedy
