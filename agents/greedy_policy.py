@@ -7,16 +7,22 @@ class GreedyPolicy(object):
         self.nS, self.nA = q_values.shape
         self.epsilon = epsilon
 
-    def sample(self, state):
-        optimal_action = np.argmax(self.q_values[state])
+    def probs(self, state):
+        max_val = np.amax(self.q_values[state])
+        optimal_actions = np.argwhere(np.isclose(self.q_values[state], max_val, rtol=0.001))
         probs = np.full(shape=self.nA, fill_value=self.epsilon/self.nA)
-        probs[optimal_action] += 1 - self.epsilon
-        return np.random.choice(self.nA, p=probs)
+        probs[optimal_actions] += (1 - self.epsilon) / len(optimal_actions)
+        return probs
+
+    def sample(self, state):
+        return np.random.choice(self.nA, p=self.probs(state))
 
     def get(self):
-        optimal_actions = np.argmax(self.q_values, axis=1)
         probs = np.full(shape=(self.nS, self.nA), fill_value=self.epsilon/self.nA)
-        probs[np.arange(len(probs)), optimal_actions] += 1-self.epsilon
+        for state in range(self.nS):
+            max_val = np.amax(self.q_values[state])
+            optimal_actions = np.argwhere(np.isclose(self.q_values[state], max_val, rtol=0.001))
+            probs[state,optimal_actions] += (1-self.epsilon) / len(optimal_actions)
         return probs
 
 

@@ -116,24 +116,27 @@ class MonteCarlo:
 
     def off_policy_q_prediction(self, target, steps=1000, episodes=100):
         Q = self.agent.q_values
-        pi_target = target.get()
-        pi_behaviour = self.agent.policy.get()
 
         cum_weights = defaultdict(lambda: defaultdict(int))
 
         for e in range(episodes):
+            pi_target = target.get()
+            pi_behaviour = self.agent.policy.get()
             episode, state_visits, q_visits = self.generate_episode(steps)
+            if e % 20 == 0:
+                print(e)
 
             ret = 0
             weight = 1
-            for step in episode[::-1]:
-                print(e)
+            for x, step in enumerate(episode[::-1]):
                 obs, action, reward = step
                 ret = self.discount * ret + reward
                 cum_weights[obs][action] += weight
 
                 Q[obs][action] = Q[obs][action] + (weight/cum_weights[obs][action]) * (ret - Q[obs][action])
                 weight = weight * (pi_target[obs][action] / pi_behaviour[obs][action])
+                if x > 500:
+                    print(x)
                 if weight == 0:
                     break
 

@@ -14,16 +14,16 @@ window = Tk()
 window.canvas = None
 env.render(mode='human', window=window)
 
-agent1 = GridAgent(env.shape, greedy=True, epsilon=0.1)
-agent2 = GridAgent(env.shape, greedy=True, epsilon=0)
+agent1 = GridAgent(env.shape, greedy=True, epsilon=0.2)
+agent2 = GridAgent(env.shape)
+DM = DynamicMethods(env, agent2)
+DM.policy_iteration()
+true_values = agent2.q_values
 MC = MonteCarlo(env, agent1)
 target = GreedyPolicy(agent1.q_values, epsilon=0)
-MC.off_policy_q_prediction(target, episodes=10)
+MC.off_policy_q_prediction(target, episodes=5000)
 
-DM = DynamicMethods(env, agent2)
-DM.policy_evaluation()
-true_values = agent2.q_values
-agent1.display_q_values(window)
+agent1.display_q_values(window, true_values=true_values)
 input()
 
 
